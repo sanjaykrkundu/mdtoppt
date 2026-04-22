@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>MD Studio Ultimate - All Features</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- <link rel="stylesheet" href="css.css" id="theme-link"> -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css" id="theme-link">
     
@@ -39,6 +40,7 @@
                     <option value="black">Black</option>
                     <option value="white">White</option>
                     <option value="league">League</option>
+                    <option value="css">custom</option>
                     <option value="dracula">Dracula</option>
                 </select>
                 
@@ -182,9 +184,14 @@ Insert images below</textarea>
         }
 
         // --- 4. UTILS ---
-        function changeTheme(t) { 
-            document.getElementById('theme-link').href = `https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/${t}.min.css`;
-            setTimeout(() => deck.layout(), 200);
+        function changeTheme(themeName) {
+            const themeLink = document.getElementById('theme-link');
+            if (themeName === 'css') {
+                themeLink.href = 'css.css'; // Path to your file
+            } else {
+                themeLink.href = `https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/${themeName}.min.css`;
+            }
+            setTimeout(() => { if(deck) deck.layout(); }, 200);
         }
 
         function toggleFullscreen() {

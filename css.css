@@ -1,0 +1,46 @@
+/* my-custom-theme.css */
+:root {
+    /* 1. Global Backgrounds */
+    --r-background-color: #0f172a; /* Deep Navy */
+    
+    /* 2. Typography Colors */
+    --r-main-color: #f1f5f9;       /* Off-White Body Text */
+    --r-heading-color: #3b82f6;    /* Bright Blue Headings */
+    --r-link-color: #60a5fa;       /* Light Blue Links */
+    --r-link-color-hover: #93c5fd; /* Hover state for links */
+    --r-selection-background-color: #1e3a8a; /* Text Highlight Color */
+    --r-selection-color: #ffffff;
+    
+    /* 3. Fonts */
+    --r-main-font: 'Inter', sans-serif;
+    --r-heading-font: 'Inter', sans-serif;
+    --r-heading-text-transform: none; /* 'uppercase' or 'none' */
+    --r-heading-text-shadow: none;
+    --r-heading-font-weight: 700;
+    --r-heading-letter-spacing: -0.02em;
+    --r-heading-line-height: 1.2;
+
+    /* 4. Controls & Progress Bar */
+    --r-controls-color: #3b82f6;   /* Navigation Arrows */
+    --r-progress-color: #3b82f6;   /* Progress Bar at the bottom */
+    
+    /* 5. Blockquotes & Code */
+    --r-blockquote-background: rgba(255, 255, 255, 0.05);
+    --r-blockquote-border: #3b82f6;
+    --r-code-font: 'Fira Code', monospace;
+}
+
+/* Application to the Reveal Engine */
+.reveal {
+    background-color: var(--r-background-color);
+    color: var(--r-main-color);
+    font-family: var(--r-main-font);
+}
+
+.reveal h1, .reveal h2, .reveal h3, .reveal h4, .reveal h5, .reveal h6 {
+    color: var(--r-heading-color);
+    font-family: var(--r-heading-font);
+    text-transform: var(--r-heading-text-transform);
+    font-weight: var(--r-heading-font-weight);
+    line-height: var(--r-heading-line-height);
+}
