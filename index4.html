@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MD Studio Pro - Sync Styling</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/dracula.min.css" id="theme-link">
+    
+    <style>
+        .reveal-viewport { background: #111; transition: background 0.3s; }
+        .selected-element { outline: 2px solid #3B82F6 !important; outline-offset: 4px; box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        [contenteditable="true"] { min-height: 1em; outline: none; transition: all 0.2s; }
+        .sidebar-label { @apply text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 block; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden">
+
+    <header class="p-4 bg-gray-800 border-b border-gray-700 flex justify-between items-center z-20">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-bold text-blue-500">MD Studio <span class="text-white font-light">Pro</span></h1>
+        </div>
+        <div class="flex gap-2">
+            <input type="file" id="fileInput" class="hidden" accept=".md">
+            <button onclick="document.getElementById('fileInput').click()" class="text-xs bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded transition">Upload .md</button>
+            <button onclick="syncAndRender()" class="text-xs bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold transition">Sync & Render</button>
+            <button onclick="toggleFullscreen()" class="text-xs bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded font-bold transition flex items-center gap-1">
+                <span>⛶</span> Full Screen
+            </button>
+            <button onclick="exportStaticHTML()" class="text-xs bg-green-600 hover:bg-green-500 px-4 py-2 rounded font-bold transition">Export HTML</button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <aside class="w-80 bg-gray-800 border-r border-gray-700 p-4 flex flex-col gap-6 overflow-y-auto shadow-2xl">
+            
+            <div>
+                <span class="sidebar-label">Markdown Input</span>
+                <textarea id="mdInput" class="w-full h-40 p-3 bg-gray-900 rounded text-xs font-mono border border-gray-700 focus:border-blue-500 outline-none"># Sales Report
+---
+## Revenue Summary
+* $125k Actual
+* $118k Target
+---
+## Highlights
+Conversion up by 4%</textarea>
+            </div>
+
+            <div class="space-y-5 bg-gray-900/50 p-4 rounded-xl border border-gray-700">
+                <div id="selectionStatus" class="text-[10px] font-bold text-blue-400 uppercase tracking-tighter mb-2">
+                    Editing: Slide Background
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase font-bold">Background</label>
+                        <input type="color" id="bgColor" oninput="applyStyle('backgroundColor', this.value)" class="w-full h-10 mt-1 rounded bg-gray-800 cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase font-bold">Text Color</label>
+                        <input type="color" id="textColor" oninput="applyStyle('color', this.value)" class="w-full h-10 mt-1 rounded bg-gray-800 cursor-pointer">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] text-gray-500 uppercase font-bold">Font Family</label>
+                    <select id="fontFamily" onchange="applyStyle('fontFamily', this.value)" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-sm mt-1 outline-none focus:border-blue-500">
+                        <option value="Inter, sans-serif">Inter (Modern)</option>
+                        <option value="'Playfair Display', serif">Playfair (Classic)</option>
+                        <option value="'Fira Code', monospace">Fira Code (Dev)</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Georgia">Georgia</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[10px] text-gray-500 uppercase font-bold">Font Size (px)</label>
+                    <input type="number" id="fontSize" oninput="applyStyle('fontSize', this.value + 'px')" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-sm mt-1">
+                </div>
+            </div>
+        </aside>
+
+        <section id="presentation-zone" class="flex-1 bg-black relative" onclick="deselect()">
+            <div class="reveal">
+                <div class="slides" id="slideContainer"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+
+    <script>
+        let deck = null;
+        let selectedElement = null;
+
+        function syncAndRender() {
+            const content = document.getElementById('mdInput').value;
+            const container = document.getElementById('slideContainer');
+            container.innerHTML = `<section data-markdown><textarea data-template>${content}</textarea></section>`;
+
+            if (deck) deck.destroy();
+            deck = new Reveal(document.querySelector('.reveal'), {
+                embedded: true, center: true, plugins: [ RevealMarkdown ]
+            });
+
+            deck.initialize().then(() => {
+                attachEditableListeners();
+            });
+        }
+
+        function attachEditableListeners() {
+            const elements = document.querySelectorAll('.reveal .slides section *');
+            elements.forEach(el => {
+                if(el.tagName === 'SECTION') return;
+                el.setAttribute('contenteditable', 'true');
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectElement(el);
+                });
+            });
+        }
+
+        function selectElement(el) {
+            if (selectedElement) selectedElement.classList.remove('selected-element');
+            selectedElement = el;
+            selectedElement.classList.add('selected-element');
+            
+            document.getElementById('selectionStatus').innerText = "Editing: Selected " + el.tagName;
+            
+            // --- SYNC COLORS TO UI ---
+            const style = window.getComputedStyle(el);
+            document.getElementById('textColor').value = rgbToHex(style.color);
+            document.getElementById('bgColor').value = rgbToHex(style.backgroundColor);
+            
+            const fs = parseInt(style.fontSize);
+            document.getElementById('fontSize').value = fs;
+        }
+
+        function deselect() {
+            if (selectedElement) selectedElement.classList.remove('selected-element');
+            selectedElement = null;
+            document.getElementById('selectionStatus').innerText = "Editing: Slide Background";
+            
+            const currentSlide = deck.getCurrentSlide();
+            if (currentSlide) {
+                const style = window.getComputedStyle(currentSlide);
+                document.getElementById('bgColor').value = rgbToHex(style.backgroundColor);
+            }
+        }
+
+        function applyStyle(prop, val) {
+            if (selectedElement) {
+                selectedElement.style[prop] = val;
+            } else {
+                const currentSlide = deck.getCurrentSlide();
+                if (currentSlide) currentSlide.style[prop] = val;
+            }
+        }
+
+        // Color Helper
+        function rgbToHex(rgb) {
+            if (!rgb || rgb === 'rgba(0, 0, 0, 0)' || rgb === 'transparent') return "#000000";
+            const parts = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (!parts) return "#000000";
+            return "#" + parts.slice(1).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+        }
+
+        function toggleFullscreen() {
+            const zone = document.getElementById('presentation-zone');
+            if (!document.fullscreenElement) {
+                zone.requestFullscreen().then(() => {
+                    setTimeout(() => deck.layout(), 500);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function exportStaticHTML() {
+            const slidesHTML = document.querySelector('.slides').innerHTML;
+            const theme = document.getElementById('theme-link').href;
+            const finalHTML = `<!DOCTYPE html><html><head>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+                <link rel="stylesheet" href="${theme}">
+                </head><body><div class="reveal"><div class="slides">${slidesHTML}</div></div>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"><\/script>
+                <script>Reveal.initialize({ center: true });<\/script></body></html>`;
+            const blob = new Blob([finalHTML], { type: 'text/html' });
+            const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'presentation.html' });
+            a.click();
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById('mdInput').value = event.target.result;
+                syncAndRender();
+            };
+            reader.readAsText(file);
+        });
+
+        window.onload = syncAndRender;
+    </script>
+</body>
+</html>

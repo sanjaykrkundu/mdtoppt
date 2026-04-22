@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MD Studio - Input Fixed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/dracula.min.css" id="theme-link">
+    
+    <style>
+        .reveal-viewport { background: #111; }
+        .selected-element { outline: 2px solid #3B82F6 !important; outline-offset: 4px; }
+        [contenteditable="true"] { min-height: 1em; outline: none; }
+        .sidebar-label { @apply text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 block; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden">
+
+    <header class="p-4 bg-gray-800 border-b border-gray-700 flex justify-between items-center z-10">
+        <h1 class="text-xl font-bold text-blue-500">MD Studio</h1>
+        <div class="flex gap-2">
+            <input type="file" id="fileInput" class="hidden" accept=".md">
+            <button onclick="document.getElementById('fileInput').click()" class="text-xs bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">Upload .md</button>
+            <button onclick="syncAndRender()" class="text-xs bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold">Sync & Start Editing</button>
+            <button onclick="exportStaticHTML()" class="text-xs bg-green-600 hover:bg-green-500 px-4 py-2 rounded font-bold">Download Copy</button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <aside class="w-80 bg-gray-800 border-r border-gray-700 p-4 flex flex-col gap-4 overflow-y-auto">
+            <div>
+                <span class="sidebar-label">1. Input Text or Data</span>
+                <textarea id="mdInput" class="w-full h-64 p-3 bg-gray-900 rounded text-xs font-mono border border-gray-700 outline-none focus:border-blue-500" placeholder="Paste your Markdown here..."># Monthly Sales Report
+---
+## Key Performance
+* Revenue: $125k
+* Goal: $118k
+---
+## Next Steps
+Optimize the pipeline.</textarea>
+            </div>
+
+            <div class="space-y-4">
+                <span class="sidebar-label">2. Precision Styling</span>
+                <div id="selectionStatus" class="text-[10px] p-2 bg-blue-900/30 text-blue-400 rounded border border-blue-800">
+                    Mode: Slide Background
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase">Background Color</label>
+                    <input type="color" id="bgColor" oninput="applyStyle('backgroundColor', this.value)" class="w-full h-8 mt-1 rounded bg-transparent cursor-pointer">
+                </div>
+                <div>
+                    <label class="text-[10px] text-gray-400 uppercase">Text Color</label>
+                    <input type="color" id="textColor" oninput="applyStyle('color', this.value)" class="w-full h-8 mt-1 rounded bg-transparent cursor-pointer">
+                </div>
+            </div>
+        </aside>
+
+        <section class="flex-1 bg-black relative" onclick="deselect()">
+            <div class="reveal">
+                <div class="slides" id="slideContainer"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+
+    <script>
+        let deck = null;
+        let selectedElement = null;
+
+        // 1. Logic to take File or Text Area Input
+        function syncAndRender() {
+            const content = document.getElementById('mdInput').value;
+            const container = document.getElementById('slideContainer');
+            
+            // Wipe and re-insert the markdown template
+            container.innerHTML = `<section data-markdown data-separator="^---" data-separator-vertical="^--">
+                <textarea data-template>${content}</textarea>
+            </section>`;
+
+            if (deck) deck.destroy();
+            
+            deck = new Reveal(document.querySelector('.reveal'), {
+                embedded: true,
+                center: true,
+                plugins: [ RevealMarkdown ]
+            });
+
+            deck.initialize().then(() => {
+                // Post-processing: make the generated HTML editable
+                attachEditableListeners();
+            });
+        }
+
+        // 2. Handle File Upload
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById('mdInput').value = event.target.result;
+                syncAndRender(); // Automatically render after upload
+            };
+            reader.readAsText(file);
+        });
+
+        // 3. Selection & Style Logic
+        function attachEditableListeners() {
+            const elements = document.querySelectorAll('.reveal .slides section *');
+            elements.forEach(el => {
+                if(el.tagName === 'SECTION') return;
+                el.setAttribute('contenteditable', 'true');
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectElement(el);
+                });
+            });
+        }
+
+        function selectElement(el) {
+            if (selectedElement) selectedElement.classList.remove('selected-element');
+            selectedElement = el;
+            selectedElement.classList.add('selected-element');
+            document.getElementById('selectionStatus').innerText = "Mode: Editing " + el.tagName;
+        }
+
+        function deselect() {
+            if (selectedElement) selectedElement.classList.remove('selected-element');
+            selectedElement = null;
+            document.getElementById('selectionStatus').innerText = "Mode: Slide Background";
+        }
+
+        function applyStyle(prop, val) {
+            if (selectedElement) {
+                selectedElement.style[prop] = val;
+            } else {
+                const currentSlide = deck.getCurrentSlide();
+                if (currentSlide) currentSlide.style[prop] = val;
+            }
+        }
+
+        function exportStaticHTML() {
+            const slidesHTML = document.querySelector('.slides').innerHTML;
+            const finalHTML = `
+            <!DOCTYPE html><html><head>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/dracula.min.css">
+            <style>body { background: #111; }</style></head><body>
+            <div class="reveal"><div class="slides">${slidesHTML}</div></div>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"><\/script>
+            <script>Reveal.initialize({ center: true });<\/script></body></html>`;
+            
+            const blob = new Blob([finalHTML], { type: 'text/html' });
+            const a = Object.assign(document.createElement('a'), {
+                href: URL.createObjectURL(blob),
+                download: 'presentation.html'
+            });
+            a.click();
+        }
+
+        // Initial Load
+        window.onload = syncAndRender;
+    </script>
+</body>
+</html>

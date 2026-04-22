@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pro MD Slide Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/dracula.min.css" id="theme-link">
+    
+    <style>
+        /* Highlight editable areas on hover so user knows they can click */
+        [contenteditable="true"]:hover {
+            outline: 2px dashed #60A5FA;
+            cursor: text;
+        }
+        .reveal-viewport { background: var(--bg-color, #1a1a1a); }
+        #editor-sidebar { width: 300px; transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden">
+
+    <header class="p-4 bg-gray-800 border-b border-gray-700 flex justify-between items-center shadow-md z-10">
+        <h1 class="text-xl font-bold text-blue-400">Reveal.js <span class="text-white">Studio</span></h1>
+        <div class="flex gap-2">
+            <button onclick="renderFromMD()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm font-semibold">Generate from MD</button>
+            <button onclick="exportStaticHTML()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded text-sm font-semibold">Save Offline Copy</button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <aside id="editor-sidebar" class="bg-gray-800 border-r border-gray-700 flex flex-col p-4 gap-6 overflow-y-auto">
+            
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase">1. Raw Markdown</label>
+                <textarea id="mdInput" class="w-full h-48 mt-2 p-2 bg-gray-900 rounded text-xs font-mono border border-gray-600 outline-none"># Edit Me Directly!
+---
+## Custom Design
+* Change colors in the sidebar
+* Click any text to type
+---
+## Finish & Export
+Save a standalone HTML copy.</textarea>
+            </div>
+
+            <hr class="border-gray-700">
+
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase">2. Design Suite</label>
+                <div class="mt-4 space-y-4">
+                    <div>
+                        <span class="text-sm block mb-1">Background</span>
+                        <input type="color" id="bgColor" value="#1a1a1a" oninput="updateDesign()" class="w-full h-8 rounded cursor-pointer bg-transparent">
+                    </div>
+                    <div>
+                        <span class="text-sm block mb-1">Font Family</span>
+                        <select id="fontFamily" onchange="updateDesign()" class="w-full bg-gray-900 border border-gray-600 p-1 rounded text-sm">
+                            <option value="Arial">Sans-Serif</option>
+                            <option value="'Courier New'">Monospace</option>
+                            <option value="'Times New Roman'">Serif</option>
+                            <option value="system-ui">System Default</option>
+                        </select>
+                    </div>
+                    <div>
+                        <span class="text-sm block mb-1">Reveal Theme</span>
+                        <select id="themeSelect" onchange="changeTheme(this.value)" class="w-full bg-gray-900 border border-gray-600 p-1 rounded text-sm text-blue-400">
+                            <option value="dracula">Dracula (Dark)</option>
+                            <option value="white">White (Clean)</option>
+                            <option value="beige">Beige (Vintage)</option>
+                            <option value="league">League (Bold)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <section class="flex-1 bg-black relative">
+            <div class="reveal">
+                <div class="slides" id="slideContainer">
+                    </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+
+    <script>
+        let deck;
+
+        function initReveal() {
+            if (deck) deck.destroy();
+            deck = new Reveal(document.querySelector('.reveal'), {
+                embedded: true,
+                center: true,
+                hash: false,
+                plugins: [ RevealMarkdown ]
+            });
+            deck.initialize().then(() => {
+                // Once initialized, make all text containers editable
+                makeEditable();
+            });
+        }
+
+        function renderFromMD() {
+            const content = document.getElementById('mdInput').value;
+            const container = document.getElementById('slideContainer');
+            container.innerHTML = `<section data-markdown><textarea data-template>${content}</textarea></section>`;
+            initReveal();
+        }
+
+        function makeEditable() {
+            // Target headings, paragraphs, and list items
+            const elements = document.querySelectorAll('.reveal .slides section *');
+            elements.forEach(el => {
+                if(el.childNodes.length > 0 && el.tagName !== 'SCRIPT') {
+                    el.setAttribute('contenteditable', 'true');
+                }
+            });
+        }
+
+        function updateDesign() {
+            const bg = document.getElementById('bgColor').value;
+            const font = document.getElementById('fontFamily').value;
+            
+            const slides = document.querySelector('.reveal');
+            slides.style.setProperty('--bg-color', bg);
+            slides.style.fontFamily = font;
+            
+            // Update Reveal background color
+            document.querySelector('.reveal-viewport').style.background = bg;
+        }
+
+        function changeTheme(theme) {
+            const link = document.getElementById('theme-link');
+            link.href = `https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/${theme}.min.css`;
+        }
+
+        function exportStaticHTML() {
+            // Get the current HTML of the slides
+            const slidesHTML = document.querySelector('.slides').innerHTML;
+            const currentTheme = document.getElementById('theme-link').href;
+            const currentBG = document.getElementById('bgColor').value;
+
+            const fullPage = `
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="${currentTheme}">
+    <style>body { background: ${currentBG} !important; }</style>
+</head>
+<body>
+    <div class="reveal"><div class="slides">${slidesHTML}</div></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"><\/script>
+    <script>Reveal.initialize({ center: true, hash: true });<\/script>
+</body>
+</html>`;
+
+            const blob = new Blob([fullPage], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "presentation_copy.html";
+            a.click();
+        }
+
+        window.onload = renderFromMD;
+    </script>
+</body>
+</html>

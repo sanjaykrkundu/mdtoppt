@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MD Studio Ultimate - All Features</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css" id="theme-link">
+    
+    <style>
+        .reveal-viewport { transition: background 0.3s ease; }
+        .selected-element { outline: 3px solid #3B82F6 !important; outline-offset: 4px; z-index: 100; }
+        [contenteditable="true"] { outline: none; }
+        .sidebar-card { @apply bg-gray-900/80 p-4 rounded-xl border border-gray-700 mb-4 shadow-lg; }
+        .control-label { @apply text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1 block; }
+        input[type="color"] { @apply w-full h-10 rounded cursor-pointer border-none bg-transparent; }
+        .reveal img { max-width: 80%; max-height: 400px; margin: 20px auto; display: block; cursor: pointer; position: relative; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden font-sans">
+
+    <header class="p-4 bg-gray-800 border-b border-gray-700 flex justify-between items-center z-20 shadow-md">
+        <h1 class="text-xl font-bold text-blue-500 italic">MD Studio <span class="text-white font-light not-italic">Ultimate</span></h1>
+        <div class="flex gap-2">
+            <input type="file" id="mdFileInput" class="hidden" accept=".md">
+            <button onclick="document.getElementById('mdFileInput').click()" class="text-xs bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded font-semibold transition">Upload .md</button>
+            <button onclick="syncAndRender()" class="text-xs bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold transition">Sync & Render</button>
+            <button onclick="toggleFullscreen()" class="text-xs bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded font-bold">⛶ Full Screen</button>
+            <button onclick="exportStaticHTML()" class="text-xs bg-green-600 hover:bg-green-500 px-4 py-2 rounded font-bold">Export HTML</button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <aside class="w-80 bg-gray-800 border-r border-gray-700 p-4 flex flex-col overflow-y-auto z-10 shadow-2xl">
+            
+            <div class="sidebar-card">
+                <label class="control-label">Presentation Theme</label>
+                <select id="themeSelect" onchange="changeTheme(this.value)" class="w-full bg-gray-800 border border-gray-600 p-2 rounded text-sm text-blue-400 mb-4">
+                    <option value="black">Black</option>
+                    <option value="white">White</option>
+                    <option value="league">League</option>
+                    <option value="dracula">Dracula</option>
+                </select>
+                
+                <input type="file" id="imgUploadInput" class="hidden" accept="image/*">
+                <button onclick="document.getElementById('imgUploadInput').click()" class="w-full bg-blue-900/40 hover:bg-blue-900/60 border border-blue-700 p-2 rounded text-[10px] font-bold uppercase tracking-tighter transition">
+                    🖼️ Insert Image to Slide
+                </button>
+            </div>
+
+            <div class="sidebar-card">
+                <div id="selectionStatus" class="text-[10px] font-bold text-blue-400 uppercase mb-4 border-b border-blue-900 pb-1">Editing: Slide Background</div>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="control-label">Background</label>
+                        <input type="color" id="bgColorInput" oninput="applyStyle('backgroundColor', this.value)">
+                    </div>
+                    <div>
+                        <label class="control-label">Text/Tint</label>
+                        <input type="color" id="textColorInput" oninput="applyStyle('color', this.value)">
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="control-label">Font Style</label>
+                        <select id="fontFamilySelect" onchange="applyStyle('fontFamily', this.value)" class="w-full bg-gray-800 border border-gray-600 p-2 rounded text-sm mb-2">
+                            <option value="inherit">Default</option>
+                            <option value="Arial">Arial</option>
+                            <option value="'Courier New', monospace">Monospace</option>
+                        </select>
+                        <input type="number" id="fontSizeInput" placeholder="Size (px)" oninput="applyStyle('fontSize', this.value + 'px')" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-sm">
+                    </div>
+                </div>
+
+                <div id="imageControls" class="mt-4 pt-4 border-t border-gray-700 hidden">
+                    <label class="control-label text-blue-400">Image Scaling (%)</label>
+                    <input type="range" id="imgWidthRange" min="10" max="100" oninput="applyStyle('width', this.value + '%')" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500 mb-4">
+                    
+                    <label class="control-label text-blue-400">Rounded Corners</label>
+                    <input type="number" id="imgRadiusInput" oninput="applyStyle('borderRadius', this.value + 'px')" class="w-full bg-gray-800 border border-gray-700 p-2 rounded text-sm">
+                </div>
+            </div>
+
+            <div class="sidebar-card flex-1 min-h-[150px]">
+                <label class="control-label">Markdown Editor</label>
+                <textarea id="mdInput" class="w-full h-full p-2 bg-gray-950 rounded text-xs font-mono border border-gray-700 outline-none focus:border-blue-500"># Sales Report
+---
+## Revenue: $125k
+* Click text to change color
+* Click background to change slide
+---
+## Global Reach
+Insert images below</textarea>
+            </div>
+        </aside>
+
+        <section id="presentation-zone" class="flex-1 bg-black relative" onclick="deselect()">
+            <div class="reveal">
+                <div class="slides" id="slideContainer"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+
+    <script>
+        let deck = null;
+        let selectedElement = null;
+
+        // --- 1. CORE RENDER ---
+        function syncAndRender() {
+            const content = document.getElementById('mdInput').value;
+            const container = document.getElementById('slideContainer');
+            container.innerHTML = `<section data-markdown><textarea data-template>${content}</textarea></section>`;
+            
+            if (deck) deck.destroy();
+            deck = new Reveal(document.querySelector('.reveal'), { embedded: true, center: true, plugins: [ RevealMarkdown ] });
+            deck.initialize().then(() => attachListeners());
+        }
+
+        // --- 2. FILE HANDLERS ---
+        document.getElementById('mdFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => { document.getElementById('mdInput').value = ev.target.result; syncAndRender(); };
+            reader.readAsText(file);
+        });
+
+        document.getElementById('imgUploadInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = document.createElement('img');
+                img.src = ev.target.result;
+                img.onclick = (event) => { event.stopPropagation(); selectElement(img); };
+                deck.getCurrentSlide().appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // --- 3. SELECTION & STYLE ---
+        function attachListeners() {
+            document.querySelectorAll('.reveal .slides section *').forEach(el => {
+                if(el.tagName === 'SECTION') return;
+                if(el.tagName !== 'IMG') el.setAttribute('contenteditable', 'true');
+                el.onclick = (e) => { e.stopPropagation(); selectElement(el); };
+            });
+        }
+
+        function selectElement(el) {
+            if (selectedElement) selectedElement.classList.remove('selected-element');
+            selectedElement = el;
+            selectedElement.classList.add('selected-element');
+            
+            document.getElementById('selectionStatus').innerText = "Editing: " + el.tagName;
+            
+            // Sync UI
+            const style = window.getComputedStyle(el);
+            document.getElementById('textColorInput').value = rgbToHex(style.color);
+            document.getElementById('bgColorInput').value = rgbToHex(style.backgroundColor);
+            document.getElementById('fontSizeInput').value = parseInt(style.fontSize);
+
+            // Toggle Image Controls
+            document.getElementById('imageControls').classList.toggle('hidden', el.tagName !== 'IMG');
+        }
+
+        function applyStyle(prop, val) {
+            if (selectedElement) selectedElement.style[prop] = val;
+            else if (deck.getCurrentSlide()) deck.getCurrentSlide().style[prop] = val;
+        }
+
+        function deselect() {
+            if (selectedElement) selectedElement.classList.remove('selected-element');
+            selectedElement = null;
+            document.getElementById('selectionStatus').innerText = "Editing: Slide Background";
+            document.getElementById('imageControls').classList.add('hidden');
+        }
+
+        // --- 4. UTILS ---
+        function changeTheme(t) { 
+            document.getElementById('theme-link').href = `https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/${t}.min.css`;
+            setTimeout(() => deck.layout(), 200);
+        }
+
+        function toggleFullscreen() {
+            const z = document.getElementById('presentation-zone');
+            if (!document.fullscreenElement) z.requestFullscreen().then(() => deck.layout());
+            else document.exitFullscreen();
+        }
+
+        function rgbToHex(rgb) {
+            if (!rgb || rgb.includes('rgba(0, 0, 0, 0)') || rgb === 'transparent') return "#000000";
+            const parts = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            return parts ? "#" + parts.slice(1).map(x => parseInt(x).toString(16).padStart(2, '0')).join('') : "#000000";
+        }
+
+        function exportStaticHTML() {
+            const slidesHTML = document.querySelector('.slides').innerHTML;
+            const theme = document.getElementById('theme-link').href;
+            const final = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css"><link rel="stylesheet" href="${theme}"></head><body><div class="reveal"><div class="slides">${slidesHTML}</div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"><\/script><script>Reveal.initialize({ center: true });<\/script></body></html>`;
+            const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([final], {type:'text/html'})), download: 'presentation.html' });
+            a.click();
+        }
+
+        // Global Keyboard Listener for 'Esc'
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape") {
+                // If we are in the middle of editing an element, deselect it first
+                if (selectedElement) {
+                    deselect();
+                    // Prevent the default browser behavior if needed
+                    event.preventDefault();
+                } 
+                // Optional: If no element is selected but we are in fullscreen, exit it
+                else if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        window.onload = syncAndRender;
+    </script>
+</body>
+</html>

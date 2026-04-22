@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MD Presenter - Plain JS</title>
+    
+    <!-- UI Styling (Tailwind for speed, but all logic is Plain JS) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Reveal.js Core CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/dracula.min.css" id="theme">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/monokai.min.css">
+
+    <style>
+        .reveal-viewport { background: #1a1a1a; }
+        .reveal.embedded { width: 100%; height: 100%; }
+        /* Fix for scaling issues */
+        .reveal .slides { inset: 0 !important; width: 100% !important; height: 100% !important; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white h-screen flex flex-col overflow-hidden">
+
+    <header class="p-4 bg-gray-800 border-b border-gray-700 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+            <h1 class="text-xl font-bold tracking-tight text-blue-400">MD Presenter</h1>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <input type="file" id="fileInput" class="hidden" accept=".md">
+            <button id="uploadBtn" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm transition">Upload .md</button>
+            <button id="syncBtn" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm font-semibold transition">Sync Preview</button>
+            <button id="fullscreenBtn" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded text-sm font-semibold flex items-center transition">
+                <span class="mr-2">⛶</span> Full Screen
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <section class="w-1/3 border-r border-gray-700 flex flex-col">
+            <textarea id="mdInput" class="flex-1 p-4 bg-gray-900 text-blue-100 font-mono text-sm outline-none resize-none" spellcheck="false"># My Presentation
+---
+## Slide 1
+* Point one
+* Point two
+---
+## Slide 2
+```cpp
+void hello() {
+    printf("Hello HAL");
+}
+```</textarea>
+        </section>
+
+        <section class="w-2/3 bg-black flex flex-col relative">
+            <div class="reveal">
+                <div class="slides" id="slideContainer"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/plugin/highlight/highlight.min.js"></script>
+
+    <script>
+        let deck = null;
+
+        function initReveal() {
+            if (deck) {
+                deck.destroy();
+            }
+            
+            deck = new Reveal(document.querySelector('.reveal'), {
+                embedded: true,
+                keyboard: true,
+                center: true,
+                width: "100%",
+                height: "100%",
+                margin: 0.1,
+                minScale: 0.1, 
+                maxScale: 2.0,
+                plugins: [ RevealMarkdown, RevealHighlight ]
+            });
+            deck.initialize();
+        }
+
+        function render() {
+            const content = document.getElementById('mdInput').value;
+            const container = document.getElementById('slideContainer');
+            container.innerHTML = `
+                <section data-markdown data-separator="^---" data-separator-vertical="^--">
+                    <textarea data-template>${content}</textarea>
+                </section>
+            `;
+            initReveal();
+        }
+
+        // Event Listeners
+        document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+        
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById('mdInput').value = event.target.result;
+                render();
+            };
+            reader.readAsText(file);
+        });
+
+        document.getElementById('syncBtn').addEventListener('click', render);
+
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            const elem = document.querySelector(".reveal");
+            if (elem.requestFullscreen) elem.requestFullscreen();
+            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+            
+            setTimeout(() => { if(deck) deck.focus(); }, 300);
+        });
+
+        window.onload = render;
+    </script>
+</body>
+</html>
